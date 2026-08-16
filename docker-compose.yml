@@ -1,0 +1,43 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: skillproof-postgres
+    environment:
+      POSTGRES_USER: skillproof
+      POSTGRES_PASSWORD: skillproof_password
+      POSTGRES_DB: skillproof_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U skillproof -d skillproof_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: skillproof-backend
+    environment:
+      - DATABASE_URL=postgresql://skillproof:skillproof_password@postgres:5432/skillproof_db
+      - LLM_PROVIDER=gemini
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-mock_key}
+      - GROQ_API_KEY=${GROQ_API_KEY:-mock_key}
+      - GITHUB_CLIENT_ID=${GITHUB_CLIENT_ID:-mock_id}
+      - GITHUB_CLIENT_SECRET=${GITHUB_CLIENT_SECRET:-mock_secret}
+      - SECRET_KEY=supersecretkey_skillproof_dev_2026
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - ./backend:/app
+
+volumes:
+  postgres_data:
